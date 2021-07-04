@@ -2,6 +2,7 @@
  * AutoExecConfig 
  *
  * Copyright (C) 2013-2019 Impact
+ *  No indicvated  copyright on original join sound pligin (see https://forums.alliedmods.net/showthread.php?p=552491)
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,7 +19,7 @@
  */
  
 #include <sourcemod>
-#include <profiler>
+//#include <profiler>
 
 #pragma semicolon 1
 #pragma newdecls required
@@ -27,15 +28,23 @@
 
 Handle g_hProf;
 
+#include <sdktools>
+#include <sdktools_sound>
 
+#pragma semicolon 1
+#define MAX_FILE_LEN 80
+new Handle:g_CvarSoundName = INVALID_HANDLE;
+new String:g_soundName[MAX_FILE_LEN];
+
+#define PLUGIN_VERSION "0.0.2"
 
 public Plugin myinfo = 
 {
-	name = "AutoExecConfig Testsuite",
-	author = "Impact",
-	description = "Tests the autoexecconfig include",
-	version = AUTOEXECCONFIG_VERSION,
-	url = AUTOEXECCONFIG_URL
+        name = "Welcome Sound",
+        author = "R-Hehl",
+        description = "Plays Welcome Sound to connecting Players",
+        version = PLUGIN_VERSION,
+        url = "http://www.compactaim.de/"
 }
 
 
@@ -53,41 +62,24 @@ public void OnPluginStart()
 	// Order of this is important, the setting has to be known before we set the file path
 	AutoExecConfig_SetCreateDirectory(true);
 	
-	// We want to let the include file create the file if it doesn't exists already, otherwise we let sourcemod create it
+	// We want to let the include file create the file if it doesnt exists already, otherwise we let sourcemod create it
 	AutoExecConfig_SetCreateFile(true);
 	
 	// Set file, extension is optional aswell as the second parameter which defaults to sourcemod
 	AutoExecConfig_SetFile("autoexecconfigtest", "sourcemod");
 
-	
-	AutoExecConfig_CreateConVar("listme", "Avalue", "An description");
-	SetAppend(appended);
-	SetError(error);
-	
-	AutoExecConfig_CreateConVar("listme2", "Anothervalue", "An other description");
-	SetAppend(appended);
-	SetError(error);
-	
-	AutoExecConfig_CreateConVar("boundtest", "Anothervaluetoo", "Cvar for boundtest", FCVAR_NONE, true, 5.0, true, 10.0);
-	SetAppend(appended);
-	SetError(error);
-	
-	AutoExecConfig_CreateConVar("newlinetest", "SomeCvar", "This\nIs\nA\nNewline\nTest", FCVAR_NONE);
-	SetAppend(appended);
-	SetError(error);
-	
-	AutoExecConfig_CreateConVar("CaSeSeNsItIvEtEsT", "Casesensitivecvar", "Weird written cvar with bounds", FCVAR_NONE, false, 0.0, true, 12.5);
-	SetAppend(appended);
-	SetError(error);
-	
-	AutoExecConfig_CreateConVar("LongDescriptionTest", "LongDescxyz", "Really, really, really, really, really, really, really, really, really, really, really, really, really, really, really, really, really, really, really, really, really, really, long description", FCVAR_NONE, false, 4.0, true, 53.5);
-	SetAppend(appended);
-	SetError(error);
-	
-	AutoExecConfig_CreateConVar("321isgreaterthan123", "Anothervalue", "Convar with numbers");
-	SetAppend(appended);
-	SetError(error);
+        // Create the rest of the cvars
+	AutoExecConfig_CreateConVar("sm_welcome_snd_version", PLUGIN_VERSION, "Welcome Sound Version", FCVAR_PLUGIN|FCVAR_SPONLY|FCVAR_REPLICATED|FCVAR_NOTIFY);
 
+        SetAppend(appended);
+        SetError(error);
+
+	g_CvarSoundName = AutoExecConfig_CreateConVar("sm_join_sound", "consnd/joinserver.mp3", "The sound to play");
+
+	
+	SetAppend(appended);
+	SetError(error);
+	
 	
 	// Execute the given config
 	AutoExecConfig_ExecuteFile();
@@ -108,14 +100,27 @@ public void OnPluginStart()
 	
 
 
-	StopProfiling(g_hProf);
+//	StopProfiling(g_hProf);
 	
-	float fProfilerTime = GetProfilerTime(g_hProf);
-	PrintToServer("Benchmark: %f seconds, %f milliseconds", fProfilerTime, fProfilerTime * 1000);
-	PrintToServer("Benchmark needed approximately %f %% of 1 Second", CalculateFloatPercentage(fProfilerTime, 0.01));
-	PrintToServer("Benchmark needed approximately %f %% of 1 Frame", CalculateFloatPercentage(fProfilerTime, 0.01 / 66.7));
+//	float fProfilerTime = GetProfilerTime(g_hProf);
+//	PrintToServer("Benchmark: %f seconds, %f milliseconds", fProfilerTime, fProfilerTime * 1000);
+//	PrintToServer("Benchmark needed approximately %f %% of 1 Second", CalculateFloatPercentage(fProfilerTime, 0.01));
+//	PrintToServer("Benchmark needed approximately %f %% of 1 Frame", CalculateFloatPercentage(fProfilerTime, 0.01 / 66.7));
 }
 
+public OnConfigsExecuted()
+{
+        GetConVarString(g_CvarSoundName, g_soundName, MAX_FILE_LEN);
+        decl String:buffer[MAX_FILE_LEN];
+        PrecacheSound(g_soundName, true);
+        Format(buffer, sizeof(buffer), "sound/%s", g_soundName);
+        AddFileToDownloadsTable(buffer);
+}
+
+public OnClientPostAdminCheck(client)
+{
+	EmitSoundToClient(client,g_soundName);
+}
 
 
 void SetAppend(bool &appended)
